@@ -324,7 +324,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the test conventions.
 
 | Module | Purpose |
 |--------|---------|
-| `events-contract` | event types and the sealed `OrderEvent` payload records shared by both services |
+| `events-contract` | event types and the sealed `OrderEvent` payload records shared by both services — see its [README](events-contract/README.md) for wire-format examples of each event on `order-events` |
 | `order-service` | orders API, transactional outbox, outbox DLQ API |
 | `order-service-e2e-tests` | end-to-end tests of `order-service`, including a Kafka outage |
 | `notification-service` | transactional inbox, notifications and their API, dead letter topic |
