@@ -20,7 +20,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -94,6 +96,23 @@ class NotificationControllerIntegrationTest {
                 .andExpect(jsonPath("$.type").value("about:blank"))
                 .andExpect(jsonPath("$.path").value("/api/v1/notifications"));
         verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("IT findByOrderId() when the service fails unexpectedly should answer 500 without the cause's message")
+    void findByOrderId_whenServiceFailsUnexpectedly_shouldAnswer500WithoutTheCausesMessage() throws Exception {
+        // given
+        when(service.findByOrderId(7L)).thenThrow(new IllegalStateException("relation \"notifications\" does not exist"));
+
+        // when / then
+        mvc.perform(get("/api/v1/notifications").param("orderId", "7"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://spring-transactional-outbox/errors/internal-error"))
+                .andExpect(jsonPath("$.detail").value("The operation could not be completed"))
+                .andExpect(jsonPath("$.path").value("/api/v1/notifications"))
+                .andExpect(jsonPath("$.timestamp").value("2026-11-14T10:15:30Z"))
+                .andExpect(content().string(not(containsString("relation \"notifications\" does not exist"))));
     }
 
     @TestConfiguration
