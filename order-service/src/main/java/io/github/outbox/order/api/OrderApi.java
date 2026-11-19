@@ -36,7 +36,10 @@ public interface OrderApi {
                     responseCode = "200",
                     description = "Order successfully cancelled",
                     content = @Content(schema = @Schema(implementation = OrderResponse.class))
-            )
+            ),
+            @ApiResponse(responseCode = "400", description = "Request validation failed"),
+            @ApiResponse(responseCode = "404", description = "Order not found"),
+            @ApiResponse(responseCode = "409", description = "Order is already cancelled")
     })
     OrderResponse cancel(
             @Parameter(description = "Correlation id of the request, a new one is generated when absent")

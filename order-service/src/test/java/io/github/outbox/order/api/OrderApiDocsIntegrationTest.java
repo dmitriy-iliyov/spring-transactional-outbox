@@ -107,7 +107,10 @@ class OrderApiDocsIntegrationTest {
         assertThat(clientErrors).contains(
                 "post /api/v1/orders 400",
                 "get /api/v1/orders/{id} 400",
-                "get /api/v1/orders/{id} 404"
+                "get /api/v1/orders/{id} 404",
+                "post /api/v1/orders/{id}/cancel 400",
+                "post /api/v1/orders/{id}/cancel 404",
+                "post /api/v1/orders/{id}/cancel 409"
         );
         assertThat(docs.path("components").path("schemas").has("Problem")).isTrue();
     }
