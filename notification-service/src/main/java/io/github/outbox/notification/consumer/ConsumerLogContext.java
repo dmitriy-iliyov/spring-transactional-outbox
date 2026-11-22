@@ -7,8 +7,6 @@ import org.springframework.messaging.Message;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * Names the consumed event in the MDC while it is handled, so that every log line written meanwhile carries the
@@ -30,8 +28,6 @@ final class ConsumerLogContext implements AutoCloseable {
 
     private static final String EVENT_ID_HEADER = "oncebox_event_id";
     private static final String EVENT_TYPE_HEADER = "oncebox_event_type";
-    // W3C traceparent: version, trace id, parent span id, flags
-    private static final Pattern TRACE_PARENT = Pattern.compile("[0-9a-f]{2}-([0-9a-f]{32})-[0-9a-f]{16}-[0-9a-f]{2}");
 
     private final List<String> keys = new ArrayList<>();
 
@@ -69,11 +65,8 @@ final class ConsumerLogContext implements AutoCloseable {
     }
 
     private static String traceId(String traceParent) {
-        if (traceParent == null) {
-            return null;
-        }
-        Matcher matcher = TRACE_PARENT.matcher(traceParent);
-        return matcher.matches() ? matcher.group(1) : null;
+        TraceParent parsed = TraceParent.parse(traceParent);
+        return parsed.isEmpty() ? null : parsed.traceId();
     }
 
     // Kafka hands raw header values over as bytes; the inbox factory may already have turned them into strings.
