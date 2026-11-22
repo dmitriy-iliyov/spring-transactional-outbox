@@ -80,6 +80,61 @@ class CorrelationIdFilterUnitTest {
     }
 
     @Test
+    @DisplayName("UT doFilter() when the client sends a correlation id should echo it as the response header")
+    void doFilter_whenClientSendsCorrelationId_shouldEchoItInTheResponseHeader() throws Exception {
+        // given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // when
+        tested.doFilter(request("checkout-1"), response, recordingChain());
+
+        // then
+        assertThat(response.getHeader(HEADER)).isEqualTo("checkout-1");
+    }
+
+    @Test
+    @DisplayName("UT doFilter() when no correlation id is sent should echo the generated one as the response header")
+    void doFilter_whenNoCorrelationIdIsSent_shouldEchoGeneratedOneInTheResponseHeader() throws Exception {
+        // given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // when
+        tested.doFilter(request(null), response, recordingChain());
+
+        // then
+        assertThat(UUID.fromString(response.getHeader(HEADER))).isNotNull();
+        assertThat(response.getHeader(HEADER)).isEqualTo(mdcInChain.get());
+    }
+
+    @Test
+    @DisplayName("UT doFilter() when the correlation id is blank should echo the replacement as the response header")
+    void doFilter_whenCorrelationIdIsBlank_shouldEchoReplacementInTheResponseHeader() throws Exception {
+        // given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // when
+        tested.doFilter(request("  "), response, recordingChain());
+
+        // then
+        assertThat(response.getHeader(HEADER)).isEqualTo(headerInChain.get());
+        assertThat(UUID.fromString(response.getHeader(HEADER))).isNotNull();
+    }
+
+    @Test
+    @DisplayName("UT doFilter() when the correlation id is too long should not echo it as the response header")
+    void doFilter_whenCorrelationIdIsTooLong_shouldNotEchoItInTheResponseHeader() throws Exception {
+        // given
+        String tooLong = "x".repeat(CorrelationIdFilter.MAX_LENGTH + 1);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        // when
+        tested.doFilter(request(tooLong), response, recordingChain());
+
+        // then
+        assertThat(response.getHeader(HEADER)).isNull();
+    }
+
+    @Test
     @DisplayName("UT doFilter() when the request ends should clear the MDC, keys put downstream included")
     void doFilter_whenRequestEnds_shouldClearMdcWithKeysPutDownstream() throws Exception {
         // when

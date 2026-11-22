@@ -35,6 +35,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import static org.hamcrest.Matchers.matchesPattern;
+import static org.hamcrest.Matchers.notNullValue;
+
 @WebMvcTest(OrderController.class)
 @Import(OrderControllerIntegrationTest.FixedClockConfiguration.class)
 class OrderControllerIntegrationTest {
@@ -84,6 +87,51 @@ class OrderControllerIntegrationTest {
 
         // then
         verify(service).create(any(CreateOrderRequest.class), eq("c-1"));
+    }
+
+    @Test
+    @DisplayName("IT create() when the answer is an error should still carry the sent X-Correlation-Id response header")
+    void create_whenAnswerIsAnError_shouldStillCarryTheCorrelationIdResponseHeader() throws Exception {
+        // when / then
+        mvc.perform(post("/api/v1/orders")
+                        .header("X-Correlation-Id", "c-9")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"items": []}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().string("X-Correlation-Id", "c-9"));
+    }
+
+    @Test
+    @DisplayName("IT create() when no correlation id is sent should answer with a generated X-Correlation-Id header")
+    void create_whenNoCorrelationIdIsSent_shouldAnswerWithGeneratedCorrelationIdHeader() throws Exception {
+        // given
+        when(service.create(any(CreateOrderRequest.class), any())).thenReturn(createdOrder(7L));
+
+        // when / then
+        mvc.perform(post("/api/v1/orders").contentType(MediaType.APPLICATION_JSON).content("""
+                        {"customerId": 42, "items": [{"productId": "sku-1", "quantity": 2, "price": 10.50}]}
+                        """))
+                .andExpect(status().isCreated())
+                .andExpect(header().exists("X-Correlation-Id"))
+                .andExpect(header().string("X-Correlation-Id", notNullValue()))
+                .andExpect(header().string("X-Correlation-Id", matchesPattern(
+                        "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")));
+    }
+
+    @Test
+    @DisplayName("IT create() when the correlation id is too long should not echo it as the response header")
+    void create_whenCorrelationIdIsTooLong_shouldNotEchoItInTheResponseHeader() throws Exception {
+        // when / then
+        mvc.perform(post("/api/v1/orders")
+                        .header("X-Correlation-Id", "c".repeat(129))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"customerId": 42, "items": [{"productId": "sku-1", "quantity": 2, "price": 10.50}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(header().doesNotExist("X-Correlation-Id"));
     }
 
     @Test
