@@ -90,6 +90,28 @@ class OrderApiDocsIntegrationTest {
     void apiDocs_whenEndpointDocumentsClientError_shouldShowItAsProblemDetail() throws Exception {
         // when
         JsonNode docs = apiDocs();
+        
+        // then
+        List<String> clientErrors = new ArrayList<>();
+        docs.path("paths").properties().forEach(path -> path.getValue().properties().forEach(operation ->
+                operation.getValue().path("responses").properties().forEach(response -> {
+                    if (response.getKey().startsWith("4")) {
+                        String where = "%s %s %s".formatted(operation.getKey(), path.getKey(), response.getKey());
+                        clientErrors.add(where);
+                        JsonNode content = response.getValue().path("content");
+                        assertThat(content.size()).as("media types of %s", where).isEqualTo(1);
+                        assertThat(content.path(MediaType.APPLICATION_PROBLEM_JSON_VALUE).path("schema")
+                                .path("$ref").asText()).as("schema of %s", where).isEqualTo(PROBLEM_REF);
+                    }
+                })));
+        
+        // Special check for 429 response with Retry-After header
+        JsonNode postOrderResponses = docs.path("paths").path("/api/v1/orders").path("post").path("responses");
+        JsonNode response429 = postOrderResponses.path("429");
+        assertThat(response429.isMissingNode()).as("429 response for POST /api/v1/orders").isFalse();
+        assertThat(response429.path("headers").has("Retry-After")).as("Retry-After header for 429 response").isTrue();
+        // when
+        JsonNode docs = apiDocs();
 
         // then
         List<String> clientErrors = new ArrayList<>();
@@ -106,6 +128,7 @@ class OrderApiDocsIntegrationTest {
                 })));
         assertThat(clientErrors).contains(
                 "post /api/v1/orders 400",
+                "post /api/v1/orders 429",
                 "get /api/v1/orders/{id} 400",
                 "get /api/v1/orders/{id} 404",
                 "post /api/v1/orders/{id}/cancel 400",

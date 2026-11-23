@@ -14,10 +14,10 @@
     <description>Gatling load tests of the order service, run against a started stack</description>
 
     <properties>
-        <gatling.version>3.15.1</gatling.version>
-        <gatling-maven-plugin.version>4.21.9</gatling-maven-plugin.version>
+        <gatling.version>3.16.1</gatling.version>
+        <gatling-maven-plugin.version>4.22.3</gatling-maven-plugin.version>
         <!-- the Netty line Gatling is built on; the Spring Boot parent would manage the older one -->
-        <netty.version>4.2.14.Final</netty.version>
+        <netty.version>4.2.20.Final</netty.version>
         <!-- simulations only: nothing here is measured by coverage, and nothing runs in mvn verify -->
         <jacoco.skip>true</jacoco.skip>
         <maven.install.skip>true</maven.install.skip>

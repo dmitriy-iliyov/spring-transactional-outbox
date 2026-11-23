@@ -22,7 +22,12 @@ public interface OrderApi {
                     headers = @Header(name = "Location", description = "URI of the created order"),
                     content = @Content(schema = @Schema(implementation = OrderResponse.class))
             ),
-            @ApiResponse(responseCode = "400", description = "Request validation failed")
+            @ApiResponse(responseCode = "400", description = "Request validation failed"),
+            @ApiResponse(
+                    responseCode = "429",
+                    description = "Too many requests, rate limit exceeded",
+                    headers = @Header(name = "Retry-After", description = "Time in seconds to wait before retrying")
+            )
     })
     ResponseEntity<OrderResponse> create(
             @Parameter(description = "Correlation id of the request, a new one is generated when absent")
