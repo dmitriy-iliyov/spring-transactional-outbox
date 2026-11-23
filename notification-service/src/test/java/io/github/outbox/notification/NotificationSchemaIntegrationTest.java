@@ -13,6 +13,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import javax.sql.DataSource;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -67,11 +68,28 @@ class NotificationSchemaIntegrationTest {
         assertThatThrownBy(() -> insert("ORDER_CREATED", "SMS")).isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    @Test
+    @DisplayName("IT notifications when event_id is duplicated should reject the row")
+    void notifications_whenEventIdIsDuplicated_shouldRejectTheRow() {
+        // given
+        UUID eventId = UUID.randomUUID();
+        insert(eventId, "ORDER_CREATED", "LOG");
+
+        // when / then
+        assertThatThrownBy(() -> insert(eventId, "ORDER_CREATED", "LOG"))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private void insert(String type, String channel) {
+        insert(UUID.randomUUID(), type, channel);
+    }
+
+    private void insert(UUID eventId, String type, String channel) {
         jdbc.sql("""
                         INSERT INTO notifications (event_id, order_id, customer_id, type, channel, created_at)
-                        VALUES (gen_random_uuid(), 7, 42, :type, :channel, now())
+                        VALUES (:eventId, 7, 42, :type, :channel, now())
                         """)
+                .param("eventId", eventId)
                 .param("type", type)
                 .param("channel", channel)
                 .update();

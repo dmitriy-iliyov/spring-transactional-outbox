@@ -16,6 +16,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,7 +55,7 @@ class NotificationRepositoryIntegrationTest {
     void save_whenNotificationIsStored_shouldKeepEveryFieldItWasGiven() {
         // when
         Notification saved = tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED, NotificationChannel.LOG,
-                CREATED_AT);
+                CREATED_AT).orElseThrow();
 
         // then
         Map<String, Object> row = jdbc.sql("SELECT * FROM notifications WHERE id = ?").param(saved.id()).query().singleRow();
@@ -67,13 +68,29 @@ class NotificationRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("IT save() when a notification for the event already exists should return empty and keep the first one")
+    void save_whenEventIdAlreadyExists_shouldReturnEmptyAndKeepFirstNotification() {
+        // given
+        Notification first = tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
+                CREATED_AT).orElseThrow();
+
+        // when
+        Optional<Notification> duplicate = tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED,
+                NotificationChannel.LOG, CREATED_AT.plusSeconds(60));
+
+        // then
+        assertThat(duplicate).isEmpty();
+        assertThat(tested.findByOrderId(7L)).containsExactly(first);
+    }
+
+    @Test
     @DisplayName("IT findByOrderId() when the order has notifications should return only its own in the order stored")
     void findByOrderId_whenOrderHasNotifications_shouldReturnOnlyItsOwnInTheOrderStored() {
         // given
         Notification created = tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
-                CREATED_AT);
+                CREATED_AT).orElseThrow();
         Notification cancelled = tested.save(OTHER_EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED,
-                NotificationChannel.LOG, CREATED_AT.plusSeconds(60));
+                NotificationChannel.LOG, CREATED_AT.plusSeconds(60)).orElseThrow();
         tested.save(UUID.randomUUID(), 8L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG, CREATED_AT);
 
         // when

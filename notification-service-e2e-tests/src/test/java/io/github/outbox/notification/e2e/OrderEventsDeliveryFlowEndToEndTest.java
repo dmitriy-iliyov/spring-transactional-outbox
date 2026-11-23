@@ -8,6 +8,8 @@ import io.github.outbox.notification.e2e.NotificationApi.Response;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.jdbc.datasource.DriverManagerDataSource;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -19,6 +21,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 class OrderEventsDeliveryFlowEndToEndTest extends NotificationServiceEndToEndTestBase {
 
     private static final Instant OCCURRED_AT = Instant.parse("2026-11-14T10:15:30Z");
+
+    private final JdbcClient jdbc = JdbcClient.create(new DriverManagerDataSource(
+            NotificationEndToEndContainers.POSTGRES.getJdbcUrl(),
+            NotificationEndToEndContainers.POSTGRES.getUsername(),
+            NotificationEndToEndContainers.POSTGRES.getPassword()
+    ));
 
     OrderEventsDeliveryFlowEndToEndTest(@LocalServerPort int port) {
         super(port);
@@ -88,6 +96,36 @@ class OrderEventsDeliveryFlowEndToEndTest extends NotificationServiceEndToEndTes
         Waits.awaitDelivery().until(() -> notifications(orderId).json().size() == 2);
         List<String> types = notifications(orderId).json().findValuesAsText("type");
         assertThat(types).containsExactlyInAnyOrder("ORDER_CREATED", "ORDER_CANCELLED");
+    }
+
+    @Test
+    @DisplayName("E2E delivery when the inbox record is removed and the event is redelivered should store one notification")
+    void delivery_whenInboxRecordIsRemovedAndEventIsRedelivered_shouldStoreOneNotification() {
+        // given
+        long orderId = newOrderId();
+        UUID eventId = UUID.randomUUID();
+        orderService.publish(eventId, OrderEventTypes.ORDER_CREATED, created(orderId));
+        Waits.awaitDelivery().until(() -> notifications(orderId).json().size() == 1);
+        long firstNotificationId = notifications(orderId).json().get(0).get("id").asLong();
+        int deleted = jdbc.sql("DELETE FROM inbox_events WHERE id = :eventId")
+                .param("eventId", eventId)
+                .update();
+        assertThat(deleted).isEqualTo(1);
+
+        // when
+        orderService.publish(eventId, OrderEventTypes.ORDER_CREATED, created(orderId));
+
+        // then
+        Waits.awaitDelivery().until(() -> inboxCount(eventId) == 1L);
+        Waits.awaitQuiet().until(() -> notifications(orderId).json().size() == 1);
+        assertThat(notifications(orderId).json().get(0).get("id").asLong()).isEqualTo(firstNotificationId);
+    }
+
+    private long inboxCount(UUID eventId) {
+        return jdbc.sql("SELECT count(*) FROM inbox_events WHERE id = :eventId")
+                .param("eventId", eventId)
+                .query(Long.class)
+                .single();
     }
 
     private Response notifications(long orderId) {

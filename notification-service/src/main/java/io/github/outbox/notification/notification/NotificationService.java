@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Slf4j
@@ -24,20 +25,26 @@ public class NotificationService {
 
     /**
      * Notifies the customer about an order event and stores the notification. Joins the caller's transaction, so
-     * the notification is stored together with whatever the caller records about the event.
+     * the notification is stored together with whatever the caller records about the event. If a notification for
+     * the event was already stored, skips it without failing.
      *
      * @param eventId id of the event, from the message headers
      * @param event   the event
-     * @return the stored notification
+     * @return the stored notification, or empty if a notification for the event was already stored
      */
     @Transactional
-    public Notification notify(UUID eventId, OrderEvent event) {
+    public Optional<Notification> notify(UUID eventId, OrderEvent event) {
         NotificationType type = switch (event) {
             case OrderCreatedEvent created -> NotificationType.ORDER_CREATED;
             case OrderCancelledEvent cancelled -> NotificationType.ORDER_CANCELLED;
         };
-        Notification notification = repository.save(eventId, event.orderId(), event.customerId(), type,
+        Optional<Notification> notification = repository.save(eventId, event.orderId(), event.customerId(), type,
                 NotificationChannel.LOG, clock.instant().truncatedTo(ChronoUnit.MICROS));
+        if (notification.isEmpty()) {
+            log.debug("Notification already stored type={} orderId={} customerId={} eventId={} correlationId={}",
+                    type, event.orderId(), event.customerId(), eventId, event.correlationId());
+            return Optional.empty();
+        }
         log.info("Notification sent type={} orderId={} customerId={} eventId={} correlationId={}",
                 type, event.orderId(), event.customerId(), eventId, event.correlationId());
         return notification;

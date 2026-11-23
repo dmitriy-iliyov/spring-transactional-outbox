@@ -16,6 +16,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -45,11 +46,16 @@ class NotificationServiceUnitTest {
         // given
         OrderCreatedEvent event = new OrderCreatedEvent(7L, 42L, List.of(new OrderLine("sku-1", 1, BigDecimal.ONE)),
                 BigDecimal.ONE, NOW, "c-1", null);
+        Notification stored = new Notification(1L, EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED,
+                NotificationChannel.LOG, NOW_IN_MICROS);
+        when(repository.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
+                NOW_IN_MICROS)).thenReturn(Optional.of(stored));
 
         // when
-        tested.notify(EVENT_ID, event);
+        Optional<Notification> result = tested.notify(EVENT_ID, event);
 
         // then
+        assertThat(result).contains(stored);
         verify(repository).save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
                 NOW_IN_MICROS);
     }
@@ -59,12 +65,35 @@ class NotificationServiceUnitTest {
     void notify_whenOrderWasCancelled_shouldStoreOrderCancelledNotification() {
         // given
         OrderCancelledEvent event = new OrderCancelledEvent(7L, 42L, NOW, "c-1", null);
+        Notification stored = new Notification(2L, EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED,
+                NotificationChannel.LOG, NOW_IN_MICROS);
+        when(repository.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED, NotificationChannel.LOG,
+                NOW_IN_MICROS)).thenReturn(Optional.of(stored));
 
         // when
-        tested.notify(EVENT_ID, event);
+        Optional<Notification> result = tested.notify(EVENT_ID, event);
 
         // then
+        assertThat(result).contains(stored);
         verify(repository).save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED, NotificationChannel.LOG,
+                NOW_IN_MICROS);
+    }
+
+    @Test
+    @DisplayName("UT notify() when a notification for the event was already stored should return empty without failing")
+    void notify_whenNotificationWasAlreadyStored_shouldReturnEmptyWithoutFailing() {
+        // given
+        OrderCreatedEvent event = new OrderCreatedEvent(7L, 42L, List.of(new OrderLine("sku-1", 1, BigDecimal.ONE)),
+                BigDecimal.ONE, NOW, "c-1", null);
+        when(repository.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
+                NOW_IN_MICROS)).thenReturn(Optional.empty());
+
+        // when
+        Optional<Notification> result = tested.notify(EVENT_ID, event);
+
+        // then
+        assertThat(result).isEmpty();
+        verify(repository).save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
                 NOW_IN_MICROS);
     }
 

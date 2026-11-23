@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
@@ -15,11 +16,12 @@ public class NotificationRepository {
 
     private final JdbcClient jdbc;
 
-    public Notification save(UUID eventId, long orderId, long customerId, NotificationType type,
-                             NotificationChannel channel, Instant createdAt) {
-        long id = jdbc.sql("""
+    public Optional<Notification> save(UUID eventId, long orderId, long customerId, NotificationType type,
+                                       NotificationChannel channel, Instant createdAt) {
+        return jdbc.sql("""
                         INSERT INTO notifications (event_id, order_id, customer_id, type, channel, created_at)
                         VALUES (:eventId, :orderId, :customerId, :type, :channel, :createdAt)
+                        ON CONFLICT (event_id) DO NOTHING
                         RETURNING id
                         """)
                 .param("eventId", eventId)
@@ -29,8 +31,8 @@ public class NotificationRepository {
                 .param("channel", channel.name())
                 .param("createdAt", Timestamp.from(createdAt))
                 .query(Long.class)
-                .single();
-        return new Notification(id, eventId, orderId, customerId, type, channel, createdAt);
+                .optional()
+                .map(id -> new Notification(id, eventId, orderId, customerId, type, channel, createdAt));
     }
 
     public List<Notification> findByOrderId(long orderId) {

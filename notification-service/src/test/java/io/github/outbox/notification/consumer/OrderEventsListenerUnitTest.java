@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -91,7 +92,7 @@ class OrderEventsListenerUnitTest {
         Map<String, String> duringNotification = new HashMap<>();
         when(notificationService.notify(eq(EVENT_ID), any())).thenAnswer(invocation -> {
             duringNotification.putAll(MDC.getCopyOfContextMap());
-            return null;
+            return Optional.empty();
         });
 
         // when
