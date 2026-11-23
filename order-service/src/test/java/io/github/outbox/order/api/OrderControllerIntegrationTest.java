@@ -68,7 +68,7 @@ class OrderControllerIntegrationTest {
     }
 
     @Test
-    @DisplayName("IT create() when a correlation id header is sent should pass it to the service")
+    @DisplayName("IT create() when a correlation id header is sent should pass it to the service and echo it")
     void create_whenCorrelationIdHeaderIsSent_shouldPassItToTheService() throws Exception {
         // given
         when(service.create(any(CreateOrderRequest.class), any())).thenReturn(createdOrder(7L));
@@ -80,14 +80,15 @@ class OrderControllerIntegrationTest {
                         .content("""
                                 {"customerId": 42, "items": [{"productId": "sku-1", "quantity": 2, "price": 10.50}]}
                                 """))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(header().string("X-Correlation-Id", "c-1"));
 
         // then
         verify(service).create(any(CreateOrderRequest.class), eq("c-1"));
     }
 
     @Test
-    @DisplayName("IT create() when the correlation id header is too long should name the header in the problem")
+    @DisplayName("IT create() when the correlation id header is too long should name the header in the problem and not echo it")
     void create_whenCorrelationIdHeaderIsTooLong_shouldNameTheHeaderInTheProblem() throws Exception {
         // when / then
         mvc.perform(post("/api/v1/orders")
@@ -97,9 +98,22 @@ class OrderControllerIntegrationTest {
                                 {"customerId": 42, "items": [{"productId": "sku-1", "quantity": 2, "price": 10.50}]}
                                 """))
                 .andExpect(status().isBadRequest())
+                .andExpect(header().doesNotExist("X-Correlation-Id"))
                 .andExpect(jsonPath("$.errors[0].field").value("X-Correlation-Id"))
                 .andExpect(jsonPath("$.errors[0].message").value("X-Correlation-Id must be at most 128 characters"));
         verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("IT get() when the order does not exist should still return X-Correlation-Id on the error response")
+    void get_whenOrderDoesNotExist_shouldReturnCorrelationIdHeaderOnErrorResponse() throws Exception {
+        // given
+        when(service.get(7L)).thenThrow(new OrderNotFoundException(7L));
+
+        // when / then
+        mvc.perform(get("/api/v1/orders/7").header(OrderController.CORRELATION_ID_HEADER, "trace-404"))
+                .andExpect(status().isNotFound())
+                .andExpect(header().string(OrderController.CORRELATION_ID_HEADER, "trace-404"));
     }
 
     @Test

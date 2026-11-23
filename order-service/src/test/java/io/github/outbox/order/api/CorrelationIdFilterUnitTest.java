@@ -30,53 +30,65 @@ class CorrelationIdFilterUnitTest {
     }
 
     @Test
-    @DisplayName("UT doFilter() when the client sends a correlation id should log the request under it")
+    @DisplayName("UT doFilter() when the client sends a correlation id should log the request under it and echo it")
     void doFilter_whenClientSendsCorrelationId_shouldLogRequestUnderIt() throws Exception {
         // given
         MockHttpServletRequest request = request("checkout-1");
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
         // when
-        tested.doFilter(request, new MockHttpServletResponse(), recordingChain());
+        tested.doFilter(request, response, recordingChain());
 
         // then
         assertThat(mdcInChain.get()).isEqualTo("checkout-1");
         assertThat(headerInChain.get()).isEqualTo("checkout-1");
+        assertThat(response.getHeader(HEADER)).isEqualTo("checkout-1");
     }
 
     @Test
-    @DisplayName("UT doFilter() when no correlation id is sent should give the request a new one, header and MDC")
+    @DisplayName("UT doFilter() when no correlation id is sent should give the request a new one, header, response and MDC")
     void doFilter_whenNoCorrelationIdIsSent_shouldGiveRequestNewOneAsHeaderAndInMdc() throws Exception {
+        // given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
         // when
-        tested.doFilter(request(null), new MockHttpServletResponse(), recordingChain());
+        tested.doFilter(request(null), response, recordingChain());
 
         // then
         assertThat(UUID.fromString(mdcInChain.get())).isNotNull();
         assertThat(headerInChain.get()).isEqualTo(mdcInChain.get());
+        assertThat(response.getHeader(HEADER)).isEqualTo(mdcInChain.get());
     }
 
     @Test
     @DisplayName("UT doFilter() when the correlation id is blank should replace it with a new one")
     void doFilter_whenCorrelationIdIsBlank_shouldReplaceItWithNewOne() throws Exception {
+        // given
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
         // when
-        tested.doFilter(request("  "), new MockHttpServletResponse(), recordingChain());
+        tested.doFilter(request("  "), response, recordingChain());
 
         // then
         assertThat(UUID.fromString(headerInChain.get())).isNotNull();
         assertThat(mdcInChain.get()).isEqualTo(headerInChain.get());
+        assertThat(response.getHeader(HEADER)).isEqualTo(headerInChain.get());
     }
 
     @Test
-    @DisplayName("UT doFilter() when the correlation id is too long should leave it to validation and not log it")
+    @DisplayName("UT doFilter() when the correlation id is too long should leave it to validation and neither log nor echo it")
     void doFilter_whenCorrelationIdIsTooLong_shouldLeaveItToValidationAndNotLogIt() throws Exception {
         // given
         String tooLong = "x".repeat(CorrelationIdFilter.MAX_LENGTH + 1);
+        MockHttpServletResponse response = new MockHttpServletResponse();
 
         // when
-        tested.doFilter(request(tooLong), new MockHttpServletResponse(), recordingChain());
+        tested.doFilter(request(tooLong), response, recordingChain());
 
         // then
         assertThat(mdcInChain.get()).isNull();
         assertThat(headerInChain.get()).isEqualTo(tooLong);
+        assertThat(response.getHeader(HEADER)).isNull();
     }
 
     @Test

@@ -20,9 +20,11 @@ import java.util.UUID;
 /**
  * Gives every request a correlation id and puts it in the MDC as {@value #MDC_KEY} for the whole request, so that
  * every log line of it carries the id. The client's {@code X-Correlation-Id} is kept; a request without one gets a
- * new id, set as that header for everything downstream, so the controller, the stored events and the log agree. A
- * header longer than the API accepts is left to validation and is not logged. The MDC is cleared when the request
- * ends, keys put by the service included, so nothing leaks into the next request served by the same thread.
+ * new id, set as that header for everything downstream, so the controller, the stored events and the log agree. The
+ * effective id is also written to the response's {@code X-Correlation-Id} header before the rest of the chain runs,
+ * so error responses carry it too. A header longer than the API accepts is left to validation and is neither logged
+ * nor echoed. The MDC is cleared when the request ends, keys put by the service included, so nothing leaks into the
+ * next request served by the same thread.
  */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
@@ -40,10 +42,12 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
             if (sent == null || sent.isBlank()) {
                 String generated = UUID.randomUUID().toString();
                 MDC.put(MDC_KEY, generated);
+                response.setHeader(OrderController.CORRELATION_ID_HEADER, generated);
                 chain.doFilter(new WithCorrelationIdHeader(request, generated), response);
             } else {
                 if (sent.length() <= MAX_LENGTH) {
                     MDC.put(MDC_KEY, sent);
+                    response.setHeader(OrderController.CORRELATION_ID_HEADER, sent);
                 }
                 chain.doFilter(request, response);
             }
