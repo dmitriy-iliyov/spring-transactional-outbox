@@ -82,6 +82,17 @@ class NotificationApiDocsIntegrationTest {
         assertThat(schema.path("type").asText()).isEqualTo("array");
         assertThat(schema.path("items").path("$ref").asText())
                 .isEqualTo("#/components/schemas/NotificationResponse");
+        
+        // Verify that response schema has examples
+        JsonNode components = apiDocs().path("components").path("schemas");
+        JsonNode notificationResponse = components.path("NotificationResponse");
+        assertThat(notificationResponse.path("properties").path("id").path("example").asText()).isEqualTo("123");
+        assertThat(notificationResponse.path("properties").path("eventId").path("example").asText()).isEqualTo("550e8400-e29b-41d4-a716-446655440000");
+        assertThat(notificationResponse.path("properties").path("orderId").path("example").asText()).isEqualTo("1");
+        assertThat(notificationResponse.path("properties").path("customerId").path("example").asText()).isEqualTo("42");
+        assertThat(notificationResponse.path("properties").path("type").path("example").asText()).isEqualTo("ORDER_CREATED");
+        assertThat(notificationResponse.path("properties").path("channel").path("example").asText()).isEqualTo("EMAIL");
+        assertThat(notificationResponse.path("properties").path("createdAt").path("example").asText()).isEqualTo("2023-01-01T12:00:00Z");
     }
 
     @Test
@@ -97,6 +108,15 @@ class NotificationApiDocsIntegrationTest {
         assertThat(content.path(MediaType.APPLICATION_PROBLEM_JSON_VALUE).path("schema").path("$ref").asText())
                 .isEqualTo(PROBLEM_REF);
         assertThat(docs.path("components").path("schemas").has("Problem")).isTrue();
+        
+        // Verify that 500 response is documented
+        assertThat(docs.path("paths").path("/api/v1/notifications").path("get").path("responses").has("500")).isTrue();
+        
+        // Verify that orderId parameter has description and example
+        JsonNode parameter = docs.path("paths").path("/api/v1/notifications").path("get").path("parameters").get(0);
+        assertThat(parameter.path("name").asText()).isEqualTo("orderId");
+        assertThat(parameter.path("description").asText()).isEqualTo("ID of the order to retrieve notifications for");
+        assertThat(parameter.path("example").asText()).isEqualTo("1");
     }
 
     @Test

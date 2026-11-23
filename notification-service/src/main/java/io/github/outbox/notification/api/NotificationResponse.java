@@ -22,31 +22,53 @@ import java.util.UUID;
 @Schema(description = "Notification sent for an order event")
 public record NotificationResponse(
 
-        @Schema(description = "Id of the notification", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Id of the notification",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "123"
+        )
         long id,
 
         @Schema(
                 description = "Id of the order event the notification was sent for",
-                requiredMode = Schema.RequiredMode.REQUIRED
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "550e8400-e29b-41d4-a716-446655440000"
         )
         UUID eventId,
 
-        @Schema(description = "Id of the order the notification is about", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Id of the order the notification is about",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "1"
+        )
         long orderId,
 
         @Schema(
                 description = "Id of the customer the notification was sent to",
-                requiredMode = Schema.RequiredMode.REQUIRED
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "42"
         )
         long customerId,
 
-        @Schema(description = "What happened to the order", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "What happened to the order",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "ORDER_CREATED"
+        )
         NotificationType type,
 
-        @Schema(description = "Where the notification was delivered", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Where the notification was delivered",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "EMAIL"
+        )
         NotificationChannel channel,
 
-        @Schema(description = "Moment the notification was stored", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "Moment the notification was stored",
+                requiredMode = Schema.RequiredMode.REQUIRED,
+                example = "2023-01-01T12:00:00Z"
+        )
         Instant createdAt
 ) {
 
