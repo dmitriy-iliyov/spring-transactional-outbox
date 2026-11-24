@@ -20,6 +20,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,6 +96,33 @@ class NotificationServiceUnitTest {
         assertThat(result).isEmpty();
         verify(repository).save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
                 NOW_IN_MICROS);
+    }
+
+    @Test
+    @DisplayName("UT findById() when the notification exists should return it as a response")
+    void findById_whenNotificationExists_shouldReturnItAsAResponse() {
+        // given
+        Notification notification = new Notification(1L, EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED,
+                NotificationChannel.LOG, NOW_IN_MICROS);
+        when(repository.findById(1L)).thenReturn(Optional.of(notification));
+
+        // when
+        NotificationResponse found = tested.findById(1L);
+
+        // then
+        assertThat(found).isEqualTo(NotificationResponse.from(notification));
+    }
+
+    @Test
+    @DisplayName("UT findById() when the notification does not exist should throw NotificationNotFoundException")
+    void findById_whenNotificationDoesNotExist_shouldThrowNotificationNotFoundException() {
+        // given
+        when(repository.findById(1L)).thenReturn(Optional.empty());
+
+        // when / then
+        assertThatThrownBy(() -> tested.findById(1L))
+                .isInstanceOf(NotificationNotFoundException.class)
+                .hasMessage("Notification 1 not found");
     }
 
     @Test

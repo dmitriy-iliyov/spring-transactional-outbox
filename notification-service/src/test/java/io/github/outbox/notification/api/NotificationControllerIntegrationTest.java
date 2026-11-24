@@ -1,6 +1,7 @@
 package io.github.outbox.notification.api;
 
 import io.github.outbox.notification.notification.NotificationChannel;
+import io.github.outbox.notification.notification.NotificationNotFoundException;
 import io.github.outbox.notification.notification.NotificationService;
 import io.github.outbox.notification.notification.NotificationType;
 import org.junit.jupiter.api.DisplayName;
@@ -42,6 +43,58 @@ class NotificationControllerIntegrationTest {
 
     @MockitoBean
     private NotificationService service;
+
+    @Test
+    @DisplayName("IT findById() when the notification exists should answer 200 with it")
+    void findById_whenNotificationExists_shouldAnswer200WithIt() throws Exception {
+        // given
+        when(service.findById(1L)).thenReturn(new NotificationResponse(
+                1L, EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG, NOW));
+
+        // when / then
+        mvc.perform(get("/api/v1/notifications/{id}", 1))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.eventId").value(EVENT_ID.toString()))
+                .andExpect(jsonPath("$.orderId").value(7))
+                .andExpect(jsonPath("$.customerId").value(42))
+                .andExpect(jsonPath("$.type").value("ORDER_CREATED"))
+                .andExpect(jsonPath("$.channel").value("LOG"))
+                .andExpect(jsonPath("$.createdAt").value("2026-11-14T10:15:30Z"));
+    }
+
+    @Test
+    @DisplayName("IT findById() when id is not positive should answer a validation problem naming it")
+    void findById_whenIdIsNotPositive_shouldAnswerValidationProblemNamingIt() throws Exception {
+        // when / then
+        mvc.perform(get("/api/v1/notifications/{id}", 0))
+                .andExpect(status().isBadRequest())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://spring-transactional-outbox/errors/validation-failed"))
+                .andExpect(jsonPath("$.errors[0].field").value("id"))
+                .andExpect(jsonPath("$.errors[0].message").value("id must be positive"));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    @DisplayName("IT findById() when the notification does not exist should answer 404 with a problem")
+    void findById_whenNotificationDoesNotExist_shouldAnswer404WithAProblem() throws Exception {
+        // given
+        when(service.findById(1L)).thenThrow(new NotificationNotFoundException(1L));
+
+        // when / then
+        mvc.perform(get("/api/v1/notifications/{id}", 1))
+                .andExpect(status().isNotFound())
+                .andExpect(content().contentType(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.type").value("https://spring-transactional-outbox/errors/notification-not-found"))
+                .andExpect(jsonPath("$.title").value("Notification not found"))
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.detail").value("Notification 1 not found"))
+                .andExpect(jsonPath("$.instance").value("/api/v1/notifications/1"))
+                .andExpect(jsonPath("$.path").value("/api/v1/notifications/1"))
+                .andExpect(jsonPath("$.timestamp").value("2026-11-14T10:15:30Z"));
+    }
 
     @Test
     @DisplayName("IT findByOrderId() when the order has notifications should answer 200 with them")

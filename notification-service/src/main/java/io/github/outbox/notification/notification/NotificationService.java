@@ -51,6 +51,13 @@ public class NotificationService {
     }
 
     @Transactional(readOnly = true)
+    public NotificationResponse findById(long id) {
+        return repository.findById(id)
+                .map(NotificationResponse::from)
+                .orElseThrow(() -> new NotificationNotFoundException(id));
+    }
+
+    @Transactional(readOnly = true)
     public List<NotificationResponse> findByOrderId(long orderId) {
         return repository.findByOrderId(orderId).stream().map(NotificationResponse::from).toList();
     }

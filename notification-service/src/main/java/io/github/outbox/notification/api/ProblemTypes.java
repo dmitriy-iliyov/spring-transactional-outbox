@@ -11,6 +11,7 @@ public final class ProblemTypes {
     private static final String BASE = "https://spring-transactional-outbox/errors/";
 
     public static final URI VALIDATION_FAILED = URI.create(BASE + "validation-failed");
+    public static final URI NOTIFICATION_NOT_FOUND = URI.create(BASE + "notification-not-found");
     public static final URI INTERNAL_ERROR = URI.create(BASE + "internal-error");
 
     private ProblemTypes() {

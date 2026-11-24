@@ -25,6 +25,11 @@ final class NotificationProblems {
         return problem;
     }
 
+    static ProblemDetail notificationNotFound(String detail, String instance, Instant timestamp) {
+        return problem(HttpStatus.NOT_FOUND, ProblemTypes.NOTIFICATION_NOT_FOUND, "Notification not found", detail,
+                instance, timestamp);
+    }
+
     static ProblemDetail internalError(String instance, Instant timestamp) {
         return problem(HttpStatus.INTERNAL_SERVER_ERROR, ProblemTypes.INTERNAL_ERROR, "Internal error",
                 INTERNAL_ERROR_DETAIL, instance, timestamp);

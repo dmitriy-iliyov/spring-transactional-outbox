@@ -85,6 +85,27 @@ class NotificationApiDocsIntegrationTest {
     }
 
     @Test
+    @DisplayName("IT apiDocs() when requested should document the notification lookup and its responses")
+    void apiDocs_whenRequested_shouldDocumentNotificationLookupAndItsResponses() throws Exception {
+        // when
+        JsonNode operation = apiDocs().path("paths").path("/api/v1/notifications/{id}").path("get");
+
+        // then
+        assertThat(operation.isMissingNode()).as("GET /api/v1/notifications/{id} is documented").isFalse();
+        JsonNode responses = operation.path("responses");
+        JsonNode schema = responses.path("200").path("content").path(MediaType.APPLICATION_JSON_VALUE).path("schema");
+        assertThat(schema.path("$ref").asText()).isEqualTo("#/components/schemas/NotificationResponse");
+        assertThat(schema.path("type").asText()).isNotEqualTo("array");
+        assertThat(schema.has("items")).isFalse();
+        for (String code : List.of("400", "404")) {
+            JsonNode problem = responses.path(code).path("content").path(MediaType.APPLICATION_PROBLEM_JSON_VALUE)
+                    .path("schema");
+            assertThat(problem.path("$ref").asText()).as("response %s documents a problem detail", code)
+                    .isEqualTo(PROBLEM_REF);
+        }
+    }
+
+    @Test
     @DisplayName("IT apiDocs() when the endpoint documents a client error should show it as a problem detail")
     void apiDocs_whenEndpointDocumentsClientError_shouldShowItAsProblemDetail() throws Exception {
         // when

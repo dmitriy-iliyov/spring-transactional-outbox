@@ -3,9 +3,13 @@
 
 @host = http://localhost:8081
 @orderId = 1
+@notificationId = 1
 
 ### Notifications stored for an order
 GET {{host}}/api/v1/notifications?orderId={{orderId}}
+
+### One notification by id (use an id from the list above)
+GET {{host}}/api/v1/notifications/{{notificationId}}
 
 ### An invalid order id - 400
 GET {{host}}/api/v1/notifications?orderId=0

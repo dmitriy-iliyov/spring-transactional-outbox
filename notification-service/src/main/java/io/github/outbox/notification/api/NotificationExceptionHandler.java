@@ -1,6 +1,7 @@
 package io.github.outbox.notification.api;
 
 import io.github.outbox.notification.api.NotificationProblems.FieldViolation;
+import io.github.outbox.notification.notification.NotificationNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +41,15 @@ import java.util.List;
 public class NotificationExceptionHandler extends ResponseEntityExceptionHandler {
 
     private final Clock clock;
+
+    @ExceptionHandler(NotificationNotFoundException.class)
+    public ResponseEntity<ProblemDetail> handleNotificationNotFoundException(NotificationNotFoundException exception,
+                                                                             HttpServletRequest request) {
+        log.debug("Request {} answered 404: {}", request.getRequestURI(), exception.getMessage());
+        ProblemDetail problem = NotificationProblems.notificationNotFound(exception.getMessage(),
+                request.getRequestURI(), clock.instant());
+        return ResponseEntity.status(problem.getStatus()).body(problem);
+    }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ProblemDetail> handleException(Exception exception, HttpServletRequest request) {

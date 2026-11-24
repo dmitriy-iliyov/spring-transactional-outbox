@@ -84,6 +84,36 @@ class NotificationRepositoryIntegrationTest {
     }
 
     @Test
+    @DisplayName("IT findById() when the notification exists should return all its fields")
+    void findById_whenNotificationExists_shouldReturnAllItsFields() {
+        // given
+        tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG, CREATED_AT)
+                .orElseThrow();
+        Notification expected = tested.save(OTHER_EVENT_ID, 7L, 42L, NotificationType.ORDER_CANCELLED,
+                NotificationChannel.LOG, CREATED_AT.plusSeconds(60)).orElseThrow();
+
+        // when
+        Optional<Notification> found = tested.findById(expected.id());
+
+        // then
+        assertThat(found).contains(expected);
+    }
+
+    @Test
+    @DisplayName("IT findById() when the notification does not exist should return empty")
+    void findById_whenNotificationDoesNotExist_shouldReturnEmpty() {
+        // given
+        Notification saved = tested.save(EVENT_ID, 7L, 42L, NotificationType.ORDER_CREATED, NotificationChannel.LOG,
+                CREATED_AT).orElseThrow();
+
+        // when
+        Optional<Notification> found = tested.findById(saved.id() + 1);
+
+        // then
+        assertThat(found).isEmpty();
+    }
+
+    @Test
     @DisplayName("IT findByOrderId() when the order has notifications should return only its own in the order stored")
     void findByOrderId_whenOrderHasNotifications_shouldReturnOnlyItsOwnInTheOrderStored() {
         // given
