@@ -130,6 +130,65 @@ class NotificationApiDocsIntegrationTest {
         assertThat(docs.path("openapi").asText()).startsWith("3.0");
     }
 
+    @Test
+    @DisplayName("IT apiDocs() when requested should describe the required order id query parameter")
+    void apiDocs_whenRequested_shouldDescribeRequiredOrderIdQueryParameter() throws Exception {
+        // when
+        JsonNode parameters = apiDocs().path("paths").path("/api/v1/notifications").path("get").path("parameters");
+
+        // then
+        List<JsonNode> orderIds = new ArrayList<>();
+        parameters.forEach(parameter -> {
+            if (parameter.path("name").asText().equals("orderId")) {
+                orderIds.add(parameter);
+            }
+        });
+        assertThat(orderIds).singleElement().satisfies(parameter -> {
+            assertThat(parameter.path("in").asText()).isEqualTo("query");
+            assertThat(parameter.path("description").asText()).isNotBlank();
+            assertThat(parameter.path("required").asBoolean()).isTrue();
+            assertThat(parameter.path("example").asText()).isEqualTo("1");
+        });
+    }
+
+    @Test
+    @DisplayName("IT apiDocs() when requested should document an internal error as a problem detail")
+    void apiDocs_whenRequested_shouldDocumentInternalErrorAsProblemDetail() throws Exception {
+        // when
+        JsonNode responses = apiDocs().path("paths").path("/api/v1/notifications").path("get").path("responses");
+
+        // then
+        assertThat(responses.has("200")).isTrue();
+        assertThat(responses.has("400")).isTrue();
+        JsonNode content = responses.path("500").path("content");
+        assertThat(content.size()).isEqualTo(1);
+        assertThat(content.path(MediaType.APPLICATION_PROBLEM_JSON_VALUE).path("schema").path("$ref").asText())
+                .isEqualTo(PROBLEM_REF);
+    }
+
+    @Test
+    @DisplayName("IT apiDocs() when requested should show examples for every notification response field")
+    void apiDocs_whenRequested_shouldShowExamplesForEveryNotificationResponseField() throws Exception {
+        // when
+        JsonNode docs = apiDocs();
+        JsonNode properties = docs.path("components").path("schemas").path("NotificationResponse")
+                .path("properties");
+
+        // then
+        assertThat(properties.path("id").path("example").asText()).isEqualTo("1");
+        assertThat(properties.path("eventId").path("example").asText())
+                .isEqualTo("0193a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b");
+        assertThat(properties.path("orderId").path("example").asText()).isEqualTo("1");
+        assertThat(properties.path("customerId").path("example").asText()).isEqualTo("42");
+        assertThat(resolveSchema(docs, properties.path("type")).path("example").asText()).isEqualTo("ORDER_CREATED");
+        assertThat(resolveSchema(docs, properties.path("channel")).path("example").asText()).isEqualTo("LOG");
+        assertThat(properties.path("createdAt").path("example").asText()).isEqualTo("2026-11-14T10:15:30Z");
+    }
+
+    private static JsonNode resolveSchema(JsonNode docs, JsonNode schema) {
+        return schema.has("$ref") ? docs.at(schema.path("$ref").asText().substring(1)) : schema;
+    }
+
     private JsonNode apiDocs() throws Exception {
         String body = mvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
