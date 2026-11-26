@@ -86,6 +86,25 @@ class OrderApiDocsIntegrationTest {
     }
 
     @Test
+    @DisplayName("IT apiDocs() when requested should document order creation's rate limit and retry delay")
+    void apiDocs_whenRequested_shouldDocumentOrderCreationRateLimitWithRetryAfter() throws Exception {
+        // given
+        String orderCreationPath = "/api/v1/orders";
+
+        // when
+        JsonNode response = apiDocs().path("paths").path(orderCreationPath).path("post").path("responses").path("429");
+
+        // then
+        assertThat(response.isMissingNode()).as("order creation's 429 response").isFalse();
+        assertThat(response.path("description").asText()).isNotBlank();
+        JsonNode retryAfter = response.path("headers").path("Retry-After");
+        assertThat(retryAfter.isMissingNode()).as("Retry-After header").isFalse();
+        assertThat(retryAfter.path("description").asText()).containsIgnoringCase("seconds");
+        assertThat(retryAfter.path("schema").path("type").asText()).isEqualTo("integer");
+        assertThat(retryAfter.path("schema").path("format").asText()).isEqualTo("int64");
+    }
+
+    @Test
     @DisplayName("IT apiDocs() when an endpoint documents a client error should show it as a problem detail")
     void apiDocs_whenEndpointDocumentsClientError_shouldShowItAsProblemDetail() throws Exception {
         // when
@@ -106,6 +125,7 @@ class OrderApiDocsIntegrationTest {
                 })));
         assertThat(clientErrors).contains(
                 "post /api/v1/orders 400",
+                "post /api/v1/orders 429",
                 "get /api/v1/orders/{id} 400",
                 "get /api/v1/orders/{id} 404",
                 "post /api/v1/orders/{id}/cancel 400",
