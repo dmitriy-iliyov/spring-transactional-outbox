@@ -24,6 +24,14 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+          # ~/.m2/repository, keyed on the hash of every pom.xml: a run with unchanged POMs downloads nothing
+          cache: maven
+
+      # the Maven distribution the wrapper downloads on first use
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
 
       - name: Build and test
         run: ./mvnw -B -ntp verify
