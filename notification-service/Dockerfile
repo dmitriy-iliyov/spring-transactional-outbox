@@ -1,7 +1,8 @@
 # syntax=docker/dockerfile:1
 
 # Built from the repository root: docker build -f notification-service/Dockerfile -t notification-service .
-FROM eclipse-temurin:21-jdk AS build
+# the jar does not depend on the platform: the build stage runs natively, the runtime stage once per platform
+FROM --platform=$BUILDPLATFORM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 COPY . .
 RUN --mount=type=cache,target=/root/.m2 \
