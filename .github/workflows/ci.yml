@@ -51,3 +51,47 @@ jobs:
           name: test-reports
           path: '**/target/*-reports/'
           retention-days: 7
+
+  load-test-smoke:
+    name: Load test smoke
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # the image is built from this commit, never pulled from GHCR
+      APP_VERSION: ci
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - uses: actions/cache@v4
+        with:
+          path: ~/.m2/wrapper
+          key: maven-wrapper-${{ hashFiles('.mvn/wrapper/maven-wrapper.properties') }}
+
+      - name: Start the order service
+        run: docker compose -f docker/compose.servlet.yml up -d --build --wait --wait-timeout 300 order-service
+
+      - name: Run the smoke simulation
+        run: ./mvnw -B -ntp -pl tests/load-tests gatling:test -DbaseUrl=http://localhost:8180 -Dprofile=smoke
+
+      - name: Order service logs
+        if: failure()
+        run: docker compose -f docker/compose.servlet.yml logs --no-color order-service
+
+      - name: Upload the Gatling report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gatling-report
+          path: tests/load-tests/target/gatling/
+          retention-days: 7
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f docker/compose.servlet.yml down -v
