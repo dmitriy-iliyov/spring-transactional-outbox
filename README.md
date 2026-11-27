@@ -225,6 +225,9 @@ DB_PORT=5433 mvn -pl notification-service spring-boot:run -Dspring-boot.run.prof
 | order-service Swagger UI | http://localhost:8080/swagger-ui.html |
 | notification-service | http://localhost:8081 |
 
+Both services expose `/actuator/info` with the artifact, version and build time. Builds from a Git checkout also
+report the branch, abbreviated commit ID and commit time. Images built with the Dockerfiles report build metadata only.
+
 **3. Place an order:**
 
 ```bash
