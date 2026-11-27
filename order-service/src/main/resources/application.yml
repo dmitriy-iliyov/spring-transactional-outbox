@@ -39,6 +39,16 @@ app:
       partitions: ${ORDER_EVENTS_PARTITIONS:3}
       replicas: ${ORDER_EVENTS_REPLICAS:1}
     health-timeout: 3s
+  outbox:
+    health:
+      # older than this the service reports OUT_OF_SERVICE: publishing falls behind the writes, so a load balancer
+      # should send traffic elsewhere
+      max-pending-age: 5m
+      # older than this the service reports DOWN: a send hangs and the event is neither published nor retried.
+      # 135s is oncebox's 90s emergency timeout with half again as much room, so a send that ends through the
+      # timeout is not reported as stuck, and it stays well below
+      # oncebox.outbox.stuck-recovery.max-batch-processing-time (10m), so the problem shows before recovery
+      max-in-process-age: 135s
   rate-limit:
     order-creation:
       global:

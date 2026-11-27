@@ -1,0 +1,15 @@
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-components: always
+      show-details: always
+
+app:
+  outbox:
+    health:
+      max-pending-age: 5m
+      max-in-process-age: 135s
