@@ -1,0 +1,48 @@
+name: Release
+
+# A tag v* gets its GitHub Release: the notes are the tag's section of CHANGELOG.md with a quick start and the new
+# contributors, and the compose stack of the release is attached. The images are pushed by docker.yml on the same
+# tag; the release waits for them, so its compose stack never points at images that are not there yet.
+on:
+  push:
+    tags: [ 'v*' ]
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: .github/scripts/release-notes.sh "$GITHUB_REF_NAME" > release-notes.md
+
+      - name: Compose bundle
+        id: bundle
+        run: echo "path=$(.github/scripts/compose-bundle.sh "${GITHUB_REF_NAME#v}")" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for the images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for _ in $(seq 1 30); do
+            run=$(gh run list --workflow docker.yml --branch "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" \
+              --json databaseId --jq '.[0].databaseId // empty')
+            [ -n "$run" ] && break
+            sleep 10
+          done
+          [ -n "$run" ] || { echo "no Docker images run for $GITHUB_REF_NAME" >&2; exit 1; }
+          gh run watch "$run" --exit-status --interval 30
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BUNDLE: ${{ steps.bundle.outputs.path }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file release-notes.md "$BUNDLE"
