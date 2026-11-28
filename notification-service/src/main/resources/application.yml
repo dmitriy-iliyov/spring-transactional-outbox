@@ -25,7 +25,9 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
     listener:
-      # every consumed record is handled in a span of its own, so its log lines carry a trace and span id
+      # single handles one record per transaction, batch hands the whole poll to the inbox in one; either way each
+      # event is handled in a span of its own, so its log lines carry a trace and span id
+      type: ${KAFKA_LISTENER_TYPE:single}
       observation-enabled: true
 
 app:
